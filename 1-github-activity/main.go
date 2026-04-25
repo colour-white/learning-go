@@ -5,8 +5,22 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"github.com/joho/godotenv"
 )
 
+type Config struct{
+	GIT_TOKEN string
+}
+
+func read_config() Config {
+	env, err := godotenv.Read(".env")
+	if err!=nil{
+		log.Fatal("Could not load config: ", err)
+	}
+	return Config{GIT_TOKEN: env["GIT_TOKEN"]}
+}
+
+var config = read_config()
 
 func read_username()(string, error){
 
@@ -19,38 +33,69 @@ func read_username()(string, error){
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Println("You've entered: ", username)
 	return username, nil
-
 }
 
 
-type GitUserResponse struct {
+type GitUserInfoResponse struct {
 	Login     string `json:"login"`
 	Name      string `json:"name"`
+	Bio string `json:"bio"`
 	PublicRepos int  `json:"public_repos"`
 	Followers int    `json:"followers"`
 	Following int    `json:"following"`
 }
 
-func get_github_info(username string) (GitUserResponse, error){
+func (gitreponse GitUserInfoResponse) print(){
+	fmt.Println("Login: ", gitreponse.Login)
+	fmt.Println("Bio: ", gitreponse.Bio)
+	fmt.Println("Public repos: ", gitreponse.PublicRepos)
+	fmt.Println("Followers: ", gitreponse.Followers)
+}
 
-	resp, err := http.Get(fmt.Sprintf("https://api.github.com/users/%s", username))
+type GitRepo struct{
+	Id int `json:"id"`
+	Name string `json:"name"`
+	Url string `json:"url"`
+
+}
+
+type GitEvent struct {
+	Id string `json:"id"`
+	Type string `json:"type"`
+	Repo GitRepo `json:"repo"`
+	CreatedAt string `json:"created_at"`
+}
+
+func (gitevent GitEvent) print(){
+	switch gitevent.Type{
+		case "PushEvent":{
+			fmt.Printf("%s: Pushed to %s\n", gitevent.CreatedAt, gitevent.Repo.Name)
+		}
+		case "ReleaseEvent":{
+			fmt.Printf("%s: Created a release at %s\n", gitevent.CreatedAt, gitevent.Repo.Name)
+		}
+		default :{
+			fmt.Printf("%s: Did something!\n", gitevent.CreatedAt)
+		}
+	}
+}
+
+func get_github_info(username string) (GitUserInfoResponse, error){
+
+	url:= fmt.Sprintf("https://api.github.com/users/%s", username)
+
+	request,_:=http.NewRequest("GET", url, nil)
+	request.Header.Add("Authorization", "Bearer "+config.GIT_TOKEN)
+	resp, err := http.DefaultClient.Do(request)
 
 	if err != nil{
-		// return nil, err
 		log.Fatal(err)
 	}
 
-
+	var body GitUserInfoResponse
 	decoder:= json.NewDecoder(resp.Body)
-
-	var body GitUserResponse
-
 	err=decoder.Decode(&body)
-
-
 
 	if resp.StatusCode > 299 {
 		log.Fatal("Response failed with status code %d and \nbody %s\n", resp.StatusCode, body)
@@ -60,28 +105,54 @@ func get_github_info(username string) (GitUserResponse, error){
 	}
 
 	fmt.Println("Fetched successfully.")
-
-	
 	return body, nil
+}
+
+func get_github_event_history(username string) ([]GitEvent, error){
+	url:=fmt.Sprintf("https://api.github.com/users/%s/events/public", username)
+
+	request,_:=http.NewRequest("GET", url, nil)
+	request.Header.Add("Authorization", "Bearer "+config.GIT_TOKEN)
+	resp, err := http.DefaultClient.Do(request)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var body []GitEvent
+	decoder:=json.NewDecoder(resp.Body)
+	err=decoder.Decode(&body)
+
+	if resp.StatusCode > 299 {
+		log.Fatal("Response failed with status code %d and \nbody %s\n", resp.StatusCode, body)
+	}
+	if err!=nil{
+		log.Fatal(err)
+	}
+
+	fmt.Println("Fetched successfully.")
+	return body, nil
+	
 
 }
 
 
 func main(){
-
 	username,_:=read_username()
-
-	fmt.Println(username)
-
 	info,err := get_github_info(username)
-
 	if err != nil{
 		fmt.Println("Could not fetch user info:", err)
 	}
+	info.print()
 
 
+	events, err:= get_github_event_history(username)
+	if err != nil{
+		fmt.Println("Could not fetch user history:", err)
+	}
+	for _, e := range events {
+		e.print()
+	}
 
-
-	fmt.Println(info)
 
 }
