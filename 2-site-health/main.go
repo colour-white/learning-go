@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 var URLS_FILE_PATH = "websites.txt"
@@ -19,20 +20,26 @@ func readUrls() ([]string, error) {
 	return strings.Fields(string(data)), nil
 }
 
+func (s *Statuses) update(url string, ok bool){
+	
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.statuses[url] = ok
+}
+
 func chechWebSite(url string, status_map *Statuses, wg *sync.WaitGroup) {
 	
 	defer wg.Done()
+	client := http.Client{Timeout: 5* time.Second}
 
-	response, err:=http.Get(url)
-
-	status_map.mu.Lock()
-	defer status_map.mu.Unlock()
-
-	if err != nil || response.StatusCode != 200{
-		status_map.statuses[url] = false
+	response, err:=client.Get(url)
+	if err != nil{
+		status_map.update(url, false)
 		return
 	}
-	status_map.statuses[url] = true
+	defer response.Body.Close()
+	ok:=response.StatusCode == http.StatusOK
+	status_map.update(url, ok)
 
 }
 
