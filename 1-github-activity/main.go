@@ -33,15 +33,15 @@ func read_username()(string, error){
 	_, err := fmt.Scanln(&username)
 
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 	return username, nil
 }
 
 
 type Printable interface {
-	TextPrint()
-	JSONPrint()
+	TextPrint() 
+	JSONPrint() error
 }
 
 type GitUserInfoResponse struct {
@@ -60,12 +60,13 @@ func (gituserinfo GitUserInfoResponse) TextPrint(){
 	fmt.Println("Followers: ", gituserinfo.Followers)
 }
 
-func (gituserinfo GitUserInfoResponse) JSONPrint(){
+func (gituserinfo GitUserInfoResponse) JSONPrint()error{
 	encoder:= json.NewEncoder(os.Stdout)
 	err:=encoder.Encode(gituserinfo)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }
 
 type GitRepo struct{
@@ -96,25 +97,29 @@ func (gitevent GitEvent) TextPrint(){
 	}
 }
 
-func (gitevent GitEvent) JSONPrint(){
+func (gitevent GitEvent) JSONPrint()error{
 	encoder:= json.NewEncoder(os.Stdout)
 	err:=encoder.Encode(gitevent)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }
 
-func get_github_info(username string) (GitUserInfoResponse, error){
+func get_github_info(username, api_token string) (*GitUserInfoResponse, error){
 
 	url:= fmt.Sprintf("https://api.github.com/users/%s", username)
 
-	request,_:=http.NewRequest("GET", url, nil)
-	request.Header.Add("Authorization", "Bearer "+config.GIT_TOKEN)
-	resp, err := http.DefaultClient.Do(request)
-
-	if err != nil{
-		log.Fatal(err)
+	request,err:=http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil,err
 	}
+	request.Header.Add("Authorization", "Bearer "+api_token)
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil{
+		return nil,err
+	}
+	defer resp.Body.Close()
 
 	var body GitUserInfoResponse
 	decoder:= json.NewDecoder(resp.Body)
@@ -124,34 +129,39 @@ func get_github_info(username string) (GitUserInfoResponse, error){
 		log.Fatal("Response failed with status code %d and \nbody %s\n", resp.StatusCode, body)
 	}
 	if err!=nil{
-		log.Fatal(err)
+		return nil, err
 	}
 
 	fmt.Println("Fetched successfully.")
-	return body, nil
+	return &body, nil
 }
 
-func get_github_event_history(username string) ([]GitEvent, error){
+func get_github_event_history(username,api_token string) ([]GitEvent, error){
 	url:=fmt.Sprintf("https://api.github.com/users/%s/events/public", username)
 
-	request,_:=http.NewRequest("GET", url, nil)
-	request.Header.Add("Authorization", "Bearer "+config.GIT_TOKEN)
+	request,err:=http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Authorization", "Bearer "+ api_token)
 	resp, err := http.DefaultClient.Do(request)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
+	defer resp.Body.Close()
+
 
 	var body []GitEvent
 	decoder:=json.NewDecoder(resp.Body)
 	err=decoder.Decode(&body)
 
 	if resp.StatusCode > 299 {
-		log.Fatal("Response failed with status code %d and \nbody %s\n", resp.StatusCode, body)
+		return nil, fmt.Errorf("api request failed with status: %s", resp.Status)
 	}
 	if err!=nil{
-		log.Fatal(err)
-	}
+		return nil, err
+}
 
 	fmt.Println("Fetched successfully.")
 	return body, nil
@@ -165,24 +175,30 @@ func main(){
 	is_json:=flag.Bool("json", false, "Enable json print")
 	flag.Parse()
 
-	// username,_:=read_username()
-	username := "colour-white"
+	username,err:=read_username()
+
+	if err != nil{
+		log.Fatal(err)
+	}
 
 	print := func(p Printable) {
 		if *is_json {
-			p.JSONPrint()
+			err:=p.JSONPrint()
+			if err != nil{
+				log.Fatal(err)
+			}	
 		} else {
 			p.TextPrint()
 		}
 	}
 
-	info, err := get_github_info(username)
+	info, err := get_github_info(username, config.GIT_TOKEN)
 	if err != nil {
 		fmt.Println("Could not fetch user info:", err)
 	}
 	print(info)
 
-	events, err := get_github_event_history(username)
+	events, err := get_github_event_history(username, config.GIT_TOKEN)
 	if err != nil {
 		fmt.Println("Could not fetch user history:", err)
 	}
