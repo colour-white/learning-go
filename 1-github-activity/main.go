@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"github.com/joho/godotenv"
 	"os"
+	"flag"
 )
 
 type Config struct{
@@ -25,7 +26,7 @@ var config = read_config()
 
 func read_username()(string, error){
 
-	fmt.Println("Enter github user name: ")
+	fmt.Print("Enter github user name: ")
 
 	var username string
 
@@ -38,10 +39,9 @@ func read_username()(string, error){
 }
 
 
-type Printer interface {
+type Printable interface {
 	TextPrint()
 	JSONPrint()
-
 }
 
 type GitUserInfoResponse struct {
@@ -161,22 +161,33 @@ func get_github_event_history(username string) ([]GitEvent, error){
 
 
 func main(){
-	username,_:=read_username()
-	info,err := get_github_info(username)
-	if err != nil{
+
+	is_json:=flag.Bool("json", false, "Enable json print")
+	flag.Parse()
+
+	// username,_:=read_username()
+	username := "colour-white"
+
+	print := func(p Printable) {
+		if *is_json {
+			p.JSONPrint()
+		} else {
+			p.TextPrint()
+		}
+	}
+
+	info, err := get_github_info(username)
+	if err != nil {
 		fmt.Println("Could not fetch user info:", err)
 	}
-	info.TextPrint()
-	info.JSONPrint()
+	print(info)
 
-	events, err:= get_github_event_history(username)
-	if err != nil{
+	events, err := get_github_event_history(username)
+	if err != nil {
 		fmt.Println("Could not fetch user history:", err)
 	}
 	for _, e := range events {
-		e.TextPrint()
-		e.JSONPrint()
+		print(e)
 	}
-
 
 }
