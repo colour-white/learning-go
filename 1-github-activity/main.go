@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"github.com/joho/godotenv"
+	"os"
 )
 
 type Config struct{
@@ -37,6 +38,12 @@ func read_username()(string, error){
 }
 
 
+type Printer interface {
+	TextPrint()
+	JSONPrint()
+
+}
+
 type GitUserInfoResponse struct {
 	Login     string `json:"login"`
 	Name      string `json:"name"`
@@ -46,11 +53,19 @@ type GitUserInfoResponse struct {
 	Following int    `json:"following"`
 }
 
-func (gitreponse GitUserInfoResponse) print(){
-	fmt.Println("Login: ", gitreponse.Login)
-	fmt.Println("Bio: ", gitreponse.Bio)
-	fmt.Println("Public repos: ", gitreponse.PublicRepos)
-	fmt.Println("Followers: ", gitreponse.Followers)
+func (gituserinfo GitUserInfoResponse) TextPrint(){
+	fmt.Println("Login: ", gituserinfo.Login)
+	fmt.Println("Bio: ", gituserinfo.Bio)
+	fmt.Println("Public repos: ", gituserinfo.PublicRepos)
+	fmt.Println("Followers: ", gituserinfo.Followers)
+}
+
+func (gituserinfo GitUserInfoResponse) JSONPrint(){
+	encoder:= json.NewEncoder(os.Stdout)
+	err:=encoder.Encode(gituserinfo)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 type GitRepo struct{
@@ -67,7 +82,7 @@ type GitEvent struct {
 	CreatedAt string `json:"created_at"`
 }
 
-func (gitevent GitEvent) print(){
+func (gitevent GitEvent) TextPrint(){
 	switch gitevent.Type{
 		case "PushEvent":{
 			fmt.Printf("%s: Pushed to %s\n", gitevent.CreatedAt, gitevent.Repo.Name)
@@ -78,6 +93,14 @@ func (gitevent GitEvent) print(){
 		default :{
 			fmt.Printf("%s: Did something!\n", gitevent.CreatedAt)
 		}
+	}
+}
+
+func (gitevent GitEvent) JSONPrint(){
+	encoder:= json.NewEncoder(os.Stdout)
+	err:=encoder.Encode(gitevent)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -143,15 +166,16 @@ func main(){
 	if err != nil{
 		fmt.Println("Could not fetch user info:", err)
 	}
-	info.print()
-
+	info.TextPrint()
+	info.JSONPrint()
 
 	events, err:= get_github_event_history(username)
 	if err != nil{
 		fmt.Println("Could not fetch user history:", err)
 	}
 	for _, e := range events {
-		e.print()
+		e.TextPrint()
+		e.JSONPrint()
 	}
 
 
