@@ -27,7 +27,7 @@ func (s *Statuses) update(url string, ok bool){
 		s.statuses[url] = ok
 }
 
-func chechWebSite(url string, status_map *Statuses, wg *sync.WaitGroup) {
+func checkWebSite(url string, status_map *Statuses, wg *sync.WaitGroup) {
 	
 	defer wg.Done()
 	client := http.Client{Timeout: 5* time.Second}
@@ -73,7 +73,7 @@ func main(){
 
 	for _,url:=range urls{
 		wg.Add(1)
-		go chechWebSite(url, &wsStatus, &wg)
+		go checkWebSite(url, &wsStatus, &wg)
 	}
 	wg.Wait()
 

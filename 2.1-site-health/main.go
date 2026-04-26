@@ -21,7 +21,7 @@ func readUrls() ([]string, error) {
 }
 
 
-func chechWebSite(url string, status_map *Statuses) {
+func checkWebSite(url string, status_map *Statuses) {
 	
 	client := http.Client{Timeout: 5* time.Second}
 
@@ -67,7 +67,7 @@ func main(){
 		wg.Add(1)
 		go func(u string){
 			defer wg.Done()
-			chechWebSite(u, &wsStatus)
+			checkWebSite(u, &wsStatus)
 		}(url)
 	}
 
