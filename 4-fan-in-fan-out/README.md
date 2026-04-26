@@ -33,7 +33,7 @@ main:
 
 ## Caveats
 
-`EnrichedProducts` spawns one goroutine per product. Very elegant. Very scalable. Works great at 1000. At 1M it spawns 1M goroutines simultaneously, at which point the OS kindly introduces itself and the program dies. The fix — a worker pool like `TrustValidate` uses — was too boring to apply consistently.
+`EnrichedProducts` spawns one goroutine per product. Very elegant. Very scalable. Works great at 1000. At 1M it spawns 1M goroutines simultaneously, at which point the OS kindly introduces itself and the program dies. The fix - a worker pool like `TrustValidate` uses - was too boring to apply consistently.
 
 ## Usage
 
