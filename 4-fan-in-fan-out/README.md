@@ -28,7 +28,7 @@ MergeChannels (fan-in):
   closer goroutine waits on WaitGroup → closes merged channel
 
 main:
-  EnrichedProducts → TrustValidate → MergeChannels → print 50 results
+  EnrichedProducts → TrustValidate → MergeChannels → print results
 ```
 
 ## Caveats
