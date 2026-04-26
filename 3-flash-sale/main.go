@@ -9,11 +9,17 @@ import (
 )
 
 const userCount = 100_000
+const maxItemCount = 100
 
 type Inventory struct {
-	itemsInStock atomic.Int32
+	itemsInStock chan int
 	itemsBought  atomic.Int32
-	
+	done         chan struct{}
+	closeOnce    sync.Once
+}
+
+func (inv *Inventory) Finish() {
+	inv.closeOnce.Do(func() { close(inv.done) })
 }
 
 func paymentGateRoll() bool {
@@ -26,34 +32,37 @@ func paymentGateRoll() bool {
 }
 
 func (inventory *Inventory) Purchase(userId int) (bool, error) {
-	for {
-		itemCount := inventory.itemsInStock.Load()
-		if itemCount <= 0 {
-			return false, nil
-		}
+	select {
 
-		if inventory.itemsInStock.CompareAndSwap(itemCount, itemCount-1) {
-			if paymentGateRoll() {
-				fmt.Printf("User %d managed to buy an item №%d!\n", userId, itemCount)
-				inventory.itemsBought.Add(1)
-				return true, nil
-			} else {
-				inventory.itemsInStock.Add(1)
-				fmt.Printf("Users %d payment failed!\n", userId)
-				time.Sleep(1 * time.Second)
+	case itemId := <-inventory.itemsInStock:
+
+		if paymentGateRoll() {
+			if inventory.itemsBought.Add(1) == maxItemCount {
+				inventory.Finish()
 			}
+			fmt.Printf("User %d managed to buy an item №%d!\n", userId, itemId)
+
+			return true, nil
 		}
+		select {
+		case inventory.itemsInStock <- itemId:
+			time.Sleep(1 * time.Second)
+		case <-inventory.done:
+		}
+		fmt.Printf("User %d payment failed!\n", userId)
+		return false, nil
+	case <-inventory.done:
+		return false, nil
 	}
-}
-
-func (Inventory *Inventory) Reserve(userId, item int) {
-
 }
 
 func main() {
 
-	var inventory Inventory
-	inventory.itemsInStock.Store(100)
+	inventory := Inventory{itemsInStock: make(chan int, maxItemCount), done: make(chan struct{})}
+
+	for itemId := range maxItemCount {
+		inventory.itemsInStock <- itemId
+	}
 	inventory.itemsBought.Store(0)
 	var wg sync.WaitGroup
 
