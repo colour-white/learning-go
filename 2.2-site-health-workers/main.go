@@ -51,18 +51,14 @@ func Scrape(id int, jobs, results chan string, wg * sync.WaitGroup){
 	}
 }
 
-
 func main(){
-
-	
 	urls,err :=readUrls()
 	if err!=nil{
 		log.Fatal(err)
 	}
 
-
-	jobs:=make(chan string)
-	results:=make(chan string)
+	jobs:=make(chan string, len(urls))
+	results:=make(chan string, len(urls))
 	var wg sync.WaitGroup
 
 	for w:=1; w<=workerCount; w++{
@@ -70,23 +66,15 @@ func main(){
 		go Scrape(w, jobs, results, &wg)
 	}
 
-	
-	go func(){
-		wg.Wait()
-		close(results)
-	}()
-	
-	go func(){
-		for result:=range results{
-			fmt.Println(result)
-		}
-	}()
-
 	for _,url:=range urls{
 		jobs<-url
 	}
 
 	close(jobs)
-	
+	wg.Wait()
+	close(results)
 
+	for result:=range results{
+		fmt.Println(result)
+	}
 }
