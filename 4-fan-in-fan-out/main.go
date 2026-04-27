@@ -1,15 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/go-faker/faker/v4"
 	"math/rand/v2"
 	"sync"
 	"time"
-
-	"github.com/go-faker/faker/v4"
 )
 
-const productCount = 1000_000
+const productCount = 1_000_000
 const validatorWorkerCount = 10
 
 type Product struct {
@@ -26,17 +26,21 @@ func (product *Product) Enrich() error {
 	return nil
 }
 
-func EnrichedProducts() <-chan Product {
+func EnrichedProducts(ctx context.Context) <-chan Product {
 	products := make(chan Product, productCount)
 	var wg sync.WaitGroup
 	for range productCount {
 		wg.Add(1)
-		go func() {
+		go func(ctx context.Context) {
 			defer wg.Done()
 			p := Product{}
 			p.Enrich()
-			products <- p
-		}()
+			select {
+			case <-ctx.Done():
+				return
+			case products <- p:
+			}
+		}(ctx)
 	}
 	go func() {
 		wg.Wait()
@@ -65,7 +69,7 @@ func validate(workerId int, product Product) ProcessedProduct {
 
 }
 
-func TrustValidate(products <-chan Product) []<-chan ProcessedProduct {
+func TrustValidate(ctx context.Context, products <-chan Product) []<-chan ProcessedProduct {
 	workerChannels := make([]chan ProcessedProduct, validatorWorkerCount)
 	result := make([]<-chan ProcessedProduct, validatorWorkerCount)
 	for i := range validatorWorkerCount {
@@ -75,28 +79,53 @@ func TrustValidate(products <-chan Product) []<-chan ProcessedProduct {
 	}
 
 	for workerId := range validatorWorkerCount {
-		go func(workerId int) {
+		go func(ctx context.Context, workerId int) {
 			defer close(workerChannels[workerId])
+
 			for product := range products {
-				workerChannels[workerId] <- validate(workerId, product)
+
+				select {
+				case <-ctx.Done():
+					{
+						return
+					}
+				default:
+					{
+						workerChannels[workerId] <- validate(workerId, product)
+					}
+
+				}
 			}
-		}(workerId)
+		}(ctx, workerId)
 	}
 
 	return result
 }
 
-func MergeChannels(channels []<-chan ProcessedProduct) chan ProcessedProduct {
+func MergeChannels(ctx context.Context, channels []<-chan ProcessedProduct) chan ProcessedProduct {
 	result := make(chan ProcessedProduct)
 	var wg sync.WaitGroup
 	for _, c := range channels {
 		wg.Add(1)
-		go func(c <-chan ProcessedProduct) {
+		go func(ctx context.Context, c <-chan ProcessedProduct) {
 			defer wg.Done()
+
 			for v := range c {
-				result <- v
+
+				select {
+				case <-ctx.Done():
+					{
+						return
+					}
+				default:
+					{
+
+						result <- v
+					}
+				}
 			}
-		}(c)
+
+		}(ctx, c)
 	}
 	go func() {
 		wg.Wait()
@@ -108,13 +137,16 @@ func MergeChannels(channels []<-chan ProcessedProduct) chan ProcessedProduct {
 
 func main() {
 
-	products := EnrichedProducts()
-	processedProducts := TrustValidate(products)
-	merged := MergeChannels(processedProducts)
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+
+	products := EnrichedProducts(ctx)
+	processedProducts := TrustValidate(ctx, products)
+	merged := MergeChannels(ctx, processedProducts)
 	fmt.Println("Processes products:")
 
-	for range productCount {
-		fmt.Println(<-merged)
+	for item := range merged {
+		fmt.Println(item)
 	}
 
 }
