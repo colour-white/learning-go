@@ -19,7 +19,7 @@ func CreateTableProbe(db *sql.DB) error {
 
 	query := `CREATE TABLE IF NOT EXISTS probe (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			target_id INTEGER FOREIGN KEY NOT NULL,
+			target_id INTEGER NOT NULL REFERENCES target(id),
 			status_code INTEGER NOT NULL,
 			latency_ms INTEGER NOT NULL,
 			error TEXT,

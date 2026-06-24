@@ -9,23 +9,26 @@ import (
 
 var db *sql.DB
 
-func InitDatabase(dbPath string) error {
+func InitDatabase(dbPath string)(*sql.DB, error) {
 
 	var err error
 	db, err = sql.Open("sqlite", dbPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err = db.Ping(); err != nil {
-		return err
+		return nil, err
+	}
+	if _, err = db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		return nil, err
 	}
 
 	err = models.CreateTableTarget(db)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = models.CreateTableProbe(db)
-	return err
+	return db, err
 
 }
