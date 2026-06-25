@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go-status/internal/models"
 	"go-status/internal/storage"
+	"time"
 )
 
 func main() {
@@ -13,8 +14,8 @@ func main() {
 	if err!=nil{
 		panic(err)
 	}
-
-	t,err:=models.InsertTarget(db, "google.com", 10, "mail.com", true)
+	t:= &models.Target{Url:"google.com", Interval_sec: 10, Contact_info: "mail.com", Is_active: true, Created_at: time.Now()}
+	t,err = models.InsertTarget(db, t)
 
 	fmt.Println(t)
 

@@ -7,12 +7,12 @@ import (
 )
 
 type Probe struct {
-	id          int
-	target_id   int
-	status_code int
-	latency_ms  int
-	err_msg     string
-	timestamp   time.Time
+	Id          int
+	Target_id   int
+	Status_code int
+	Latency_ms  int
+	Err_msg     string
+	Timestamp   time.Time
 }
 
 func CreateTableProbe(db *sql.DB) error {
@@ -31,12 +31,11 @@ func CreateTableProbe(db *sql.DB) error {
 
 }
 
-func InsertProbe(db *sql.DB, target_id, status_code, latency_ms int, err_msg string) (Probe, error) {
-	var p Probe
+func InsertProbe(db *sql.DB, p*Probe) (*Probe, error) {
 	err := db.QueryRowContext(context.Background(),
-		`INSERT INTO probe (target_id, status_code, latency_ms, err_msg, timestamp) VALUES (?,?,?,?,?) RETURNING *`,
-		target_id, status_code, latency_ms, err_msg, time.Now()).
-		Scan(&p.id, &p.target_id, &p.status_code, &p.latency_ms, &p.err_msg, &p.timestamp)
+		`INSERT INTO probe (target_id, status_code, latency_ms, err_msg, timestamp) VALUES (?,?,?,?,?) RETURNING probe.id`,
+		p.Target_id, p.Status_code, p.Latency_ms, p.Err_msg, p.Timestamp).
+		Scan(&p.Id)
 	return p, err
 }
 
@@ -53,7 +52,7 @@ func SelectAllProbes(db *sql.DB) ([]Probe, error) {
 
 	for rows.Next() {
 		var p Probe
-		if err := rows.Scan(&p.id, &p.target_id, &p.status_code, &p.latency_ms, &p.err_msg, &p.timestamp); err != nil {
+		if err := rows.Scan(&p.Id, &p.Target_id, &p.Status_code, &p.Latency_ms, &p.Err_msg, &p.Timestamp); err != nil {
 			return nil, err
 		}
 		probes = append(probes, p)

@@ -7,12 +7,12 @@ import (
 )
 
 type Target struct {
-	id           int
-	url          string
-	interval_sec int
-	contact_info string
-	is_active    bool
-	created_at   time.Time
+	Id           int
+	Url          string
+	Interval_sec int
+	Contact_info string
+	Is_active    bool
+	Created_at   time.Time
 }
 
 func CreateTableTarget(db *sql.DB) error {
@@ -31,12 +31,11 @@ func CreateTableTarget(db *sql.DB) error {
 
 }
 
-func InsertTarget(db *sql.DB, url string, interval_sec int, contact_info string, is_active bool) (Target, error) {
-	var t Target
+func InsertTarget(db *sql.DB, t*Target) (*Target, error) {
 	err := db.QueryRowContext(context.Background(),
-		`INSERT INTO target (url, interval_sec, contact_info, is_active, created_at) VALUES (?,?,?,?,?) RETURNING *`,
-		url, interval_sec, contact_info, is_active, time.Now()).
-		Scan(&t.id, &t.url, &t.interval_sec, &t.contact_info, &t.is_active, &t.created_at)
+		`INSERT INTO target (url, interval_sec, contact_info, is_active, created_at) VALUES (?,?,?,?,?) RETURNING target.id`,
+		t.Url, t.Interval_sec, t.Contact_info, t.Is_active, t.Created_at).
+		Scan(&t.Id)
 	return t, err
 
 }
@@ -54,7 +53,7 @@ func SelectAllTargets(db *sql.DB) ([]Target, error) {
 
 	for rows.Next() {
 		var t Target
-		if err := rows.Scan(&t.id, &t.url, &t.interval_sec, &t.contact_info, &t.is_active, &t.created_at); err != nil {
+		if err := rows.Scan(&t.Id, &t.Url, &t.Interval_sec, &t.Contact_info, &t.Is_active, &t.Created_at); err != nil {
 			return nil, err
 		}
 		targets = append(targets, t)
