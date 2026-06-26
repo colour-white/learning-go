@@ -9,18 +9,29 @@ import (
 )
 
 type Server struct {
-	db *sql.DB
-	manager *monitor.Manager
+	DB *sql.DB
+	Manager *monitor.Manager
 }
 
 // GET /targets
 func (s *Server) listTargets(w http.ResponseWriter, r*http.Request){
-	targets,err:=models.SelectAllTargets(s.db)
+	targets,err:=models.SelectAllTargets(s.DB)
 	if err != nil{
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	writeJSON(w, http.StatusOK, targets)
 }
+
+
+// GET /probes
+func (s *Server) listProbes(w http.ResponseWriter, r*http.Request){
+	targets,err:=models.SelectAllProbes(s.DB)
+	if err != nil{
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	writeJSON(w, http.StatusOK, targets)
+}
+
 
 
 func writeJSON(w http.ResponseWriter, status int, v any){
@@ -32,5 +43,6 @@ func writeJSON(w http.ResponseWriter, status int, v any){
 func (s *Server) Routes() *http.ServeMux {
       mux := http.NewServeMux()
       mux.HandleFunc("GET /targets", s.listTargets)
+      mux.HandleFunc("GET /probes", s.listProbes)
       return mux
 }

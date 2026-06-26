@@ -1,9 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"go-status/internal/api"
 	"go-status/internal/models"
 	"go-status/internal/storage"
+	"log"
+	"net/http"
 	"time"
 )
 
@@ -14,17 +16,27 @@ func main() {
 	if err!=nil{
 		panic(err)
 	}
+	
+
 	t:= &models.Target{Url:"google.com", Interval_sec: 10, Contact_info: "mail.com", Is_active: true, Created_at: time.Now()}
 	t,err = models.InsertTarget(db, t)
 
-	fmt.Println(t)
+	server := api.Server{DB:db}
+	mux:= server.Routes()
+
+	addr:= ":8000"
+	log.Printf("Listening on %s\n", addr)
+	if err:= http.ListenAndServe(addr, mux);err != nil{
+		log.Fatal(err)
+	}
+
+	// fmt.Println(t)
 
 
-	var targets []models.Target
-	targets, err = models.SelectAllTargets(db)
+	// var targets []models.Target
+	// targets, err = models.SelectAllTargets(db)
 
-	fmt.Println(targets)
+	// fmt.Println(targets)
 
 
-	
 }
