@@ -2,11 +2,11 @@ package monitor
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"go-status/internal/models"
 	"sync"
 	"time"
-	"database/sql"
 )
 
 type Manager struct{
@@ -34,7 +34,7 @@ func (m *Manager) StartTarget(ctx context.Context, target *models.Target) {
 				return
 			case <-ticker.C:
 				fmt.Printf("Probing %s...\n", target.Url)
-				probe:=checkWebSite(target)
+				probe:= checkWebSite(target)
 				probe,err :=models.InsertProbe(m.db, probe)
 				if err!=nil{
 					fmt.Println(err.Error())
@@ -53,5 +53,15 @@ func (m *Manager) StopTarget(targetId int){
 	if ok {
 		cancelF()
 		delete(m.activeWorkers,targetId)
+	}
+}
+
+func (m *Manager) Shutdown(){
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for targetId, cancel := range m.activeWorkers {
+		cancel()
+		delete(m.activeWorkers, targetId)
 	}
 }
