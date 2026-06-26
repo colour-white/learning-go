@@ -31,9 +31,9 @@ func CreateTableProbe(db *sql.DB) error {
 
 }
 
-func InsertProbe(db *sql.DB, p*Probe) (*Probe, error) {
+func InsertProbe(db *sql.DB, p *Probe) (*Probe, error) {
 	err := db.QueryRowContext(context.Background(),
-		`INSERT INTO probe (target_id, status_code, latency_ms, err_msg, timestamp) VALUES (?,?,?,?,?) RETURNING probe.id`,
+		`INSERT INTO probe (target_id, status_code, latency_ms, error, timestamp) VALUES (?,?,?,?,?) RETURNING probe.id`,
 		p.Target_id, p.Status_code, p.Latency_ms, p.Err_msg, p.Timestamp).
 		Scan(&p.Id)
 	return p, err

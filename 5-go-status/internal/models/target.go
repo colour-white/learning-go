@@ -31,7 +31,7 @@ func CreateTableTarget(db *sql.DB) error {
 
 }
 
-func InsertTarget(db *sql.DB, t*Target) (*Target, error) {
+func InsertTarget(db *sql.DB, t *Target) (*Target, error) {
 	err := db.QueryRowContext(context.Background(),
 		`INSERT INTO target (url, interval_sec, contact_info, is_active, created_at) VALUES (?,?,?,?,?) RETURNING target.id`,
 		t.Url, t.Interval_sec, t.Contact_info, t.Is_active, t.Created_at).

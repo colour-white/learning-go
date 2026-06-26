@@ -9,7 +9,7 @@ import (
 
 var db *sql.DB
 
-func InitDatabase(dbPath string)(*sql.DB, error) {
+func InitDatabase(dbPath string) (*sql.DB, error) {
 
 	var err error
 	db, err = sql.Open("sqlite", dbPath)
